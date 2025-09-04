@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Student {
+  id           String  @id @default(cuid())
+  matricNo     String  @unique
+  email        String  @unique
+  year         Int     // 100-500
+  facultyId    String
+  departmentId String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  admin         Admin?
+  superAdmin    SuperAdmin?
+  candidatures  Candidate[]
+  ballots       Ballot[]
+  magicTokens   MagicLinkToken[]
+  createdElections Election[]
+
+  @@map("students")
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  studentId    String   @unique
+  level        AdminLevel
+  facultyId    String?
+  departmentId String?
+  createdAt    DateTime @default(now())
+
+  // Relations
+  student          Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  electionAdmins   ElectionAdmin[]
+  closeRequests    CloseRequest[]
+
+  @@map("admins")
+}
+
+model SuperAdmin {
+  id        String   @id @default(cuid())
+  studentId String   @unique
+  createdAt DateTime @default(now())
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("super_admins")
+}
+
+model Election {
+  id           String        @id @default(cuid())
+  title        String
+  description  String
+  scope        ElectionScope
+  facultyId    String?
+  departmentId String?
+  allowedYears Int[]
+  startAt      DateTime
+  endAt        DateTime
+  status       ElectionStatus @default(DRAFT)
+  createdBy    String
+  integrityHead String?       // Final fingerprint for verification
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relations
+  creator        Student @relation(fields: [createdBy], references: [id])
+  candidates     Candidate[]
+  ballots        Ballot[]
+  electionAdmins ElectionAdmin[]
+  closeRequests  CloseRequest[]
+
+  @@map("elections")
+}
+
+model Candidate {
+  id         String @id @default(cuid())
+  electionId String
+  studentId  String
+  position   String // e.g., "President", "Vice President"
+
+  // Relations
+  election Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  ballots  Ballot[]
+
+  // Constraints
+  @@unique([electionId, studentId]) // One candidature per election
+  @@map("candidates")
+}
+
+model Ballot {
+  id          String   @id @default(cuid())
+  electionId  String
+  voterId     String
+  candidateId String
+  position    String
+  castAt      DateTime @default(now())
+  fingerprint String   // SHA256 hash for integrity chain
+
+  // Relations
+  election  Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  voter     Student   @relation(fields: [voterId], references: [id], onDelete: Cascade)
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  // Constraints
+  @@unique([electionId, voterId, position]) // One vote per student per position per election
+  @@map("ballots")
+}
+
+model ElectionAdmin {
+  electionId String
+  adminId    String
+
+  // Relations
+  election Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  admin    Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@id([electionId, adminId])
+  @@map("election_admins")
+}
+
+model CloseRequest {
+  id         String   @id @default(cuid())
+  electionId String
+  adminId    String
+  createdAt  DateTime @default(now())
+
+  // Relations
+  election Election @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  admin    Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@unique([electionId, adminId])
+  @@map("close_requests")
+}
+
+model MagicLinkToken {
+  id        String   @id @default(cuid())
+  studentId String
+  nonce     String   @unique
+  exp       DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("magic_link_tokens")
+}
+
+// Enums
+enum AdminLevel {
+  FACULTY
+  DEPARTMENT
+}
+
+enum ElectionScope {
+  UNIVERSITY
+  FACULTY
+  DEPARTMENT
+}
+
+enum ElectionStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
