@@ -21,7 +21,11 @@ declare global {
         facultyId: string;
         departmentId: string;
         role: "STUDENT" | "ADMIN" | "SUPER_ADMIN";
-        adminLevel?: "FACULTY" | "DEPARTMENT";
+        adminLevels?: Array<{
+          level: string;
+          facultyId?: string;
+          departmentId?: string;
+        }>;
       };
     }
   }
@@ -34,8 +38,6 @@ export const authMiddleware = async (
 ) => {
   try {
     const token = req.cookies.session;
-    // logger.info("token", token);
-
     if (!token) {
       return res.status(401).json({ message: "Authentication required" });
     }
@@ -44,7 +46,6 @@ export const authMiddleware = async (
       token,
       process.env.JWT_SECRET || "fallback-secret"
     ) as JWTPayload | any;
-    // logger.info("decoded", decoded);
     const currentTime = Math.floor(Date.now() / 1000);
     if (currentTime > decoded.exp) {
       return res.status(401).json({ message: "Token expired" });
@@ -52,25 +53,29 @@ export const authMiddleware = async (
 
     const student = await prisma.student.findUnique({
       where: { id: decoded.studentId },
-      include: {
-        admin: true,
-        superAdmin: true,
-      },
+      include: { admins: true, superAdmin: true },
     });
 
     if (!student) {
       return res.status(401).json({ message: "User not found" });
     }
 
-    // Determine user role
     let role: "STUDENT" | "ADMIN" | "SUPER_ADMIN" = "STUDENT";
-    let adminLevel: "FACULTY" | "DEPARTMENT" | undefined;
+    let adminLevels: Array<{
+      level: string;
+      facultyId?: string;
+      departmentId?: string;
+    }> = [];
 
     if (student.superAdmin) {
       role = "SUPER_ADMIN";
-    } else if (student.admin) {
+    } else if (student.admins && student.admins.length > 0) {
       role = "ADMIN";
-      adminLevel = student.admin.level;
+      adminLevels = student.admins.map((a) => ({
+        level: a.level,
+        facultyId: a.facultyId ?? undefined,
+        departmentId: a.departmentId ?? undefined,
+      }));
     }
 
     req.user = {
@@ -81,7 +86,7 @@ export const authMiddleware = async (
       facultyId: student.facultyId,
       departmentId: student.departmentId,
       role,
-      adminLevel,
+      adminLevels,
     };
 
     next();

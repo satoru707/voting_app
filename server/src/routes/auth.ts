@@ -12,7 +12,6 @@ const router: Router = express.Router();
 router.post("/request-link", async (req, res) => {
   try {
     const { email } = req.body;
-    logger.info("WFWF", req.body);
 
     if (!email) {
       return res
@@ -31,7 +30,7 @@ router.post("/request-link", async (req, res) => {
 
     // Generate nonce and create token
     const nonce = crypto.randomBytes(32).toString("hex");
-    const exp = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    const exp = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2 hours
 
     await prisma.magicLinkToken.create({
       data: {
@@ -43,7 +42,6 @@ router.post("/request-link", async (req, res) => {
 
     // Send magic link email
     const magicLink = `${process.env.FRONTEND_URL}?token=${nonce}`;
-    logger.info(magicLink, (student as any).email);
     await sendMagicLink(student.email, magicLink);
 
     res.json({ message: "Magic link sent to your email" });
@@ -54,7 +52,6 @@ router.post("/request-link", async (req, res) => {
 });
 
 router.post("/logout", async (req, res) => {
-  logger.info("Logging out...");
   // Clear cookies on the server side
   res.clearCookie("session", { path: "/" });
 
@@ -68,8 +65,6 @@ router.post("/logout", async (req, res) => {
 router.post("/verify", async (req, res) => {
   try {
     const { token } = req.body;
-    logger.info("Token", token);
-
     if (!token) {
       return res.status(400).json({ message: "Token is required" });
     }
@@ -80,7 +75,7 @@ router.post("/verify", async (req, res) => {
       include: {
         student: {
           include: {
-            admin: true,
+            admins: true,
             superAdmin: true,
           },
         },
@@ -101,7 +96,7 @@ router.post("/verify", async (req, res) => {
     const sessionToken = jwt.sign(
       { studentId: magicToken.student.id },
       process.env.JWT_SECRET || "fallback-secret",
-      { expiresIn: "15mins" }
+      { expiresIn: "2h" }
     );
 
     // Set HTTP-only cookie
@@ -109,18 +104,29 @@ router.post("/verify", async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 15 * 60 * 1000, // 7 days
+      maxAge: 2 * 60 * 60 * 1000, // 2 hours
     });
 
     // Determine user role
     let role: "STUDENT" | "ADMIN" | "SUPER_ADMIN" = "STUDENT";
-    let adminLevel: "FACULTY" | "DEPARTMENT" | undefined;
+    let adminLevels: Array<{
+      level: string;
+      facultyId?: string;
+      departmentId?: string;
+    }> = [];
 
     if (magicToken.student.superAdmin) {
       role = "SUPER_ADMIN";
-    } else if (magicToken.student.admin) {
+    } else if (
+      magicToken.student.admins &&
+      magicToken.student.admins.length > 0
+    ) {
       role = "ADMIN";
-      adminLevel = magicToken.student.admin.level;
+      adminLevels = magicToken.student.admins.map((a) => ({
+        level: a.level,
+        facultyId: a.facultyId ?? undefined,
+        departmentId: a.departmentId ?? undefined,
+      }));
     }
 
     res.json({
@@ -131,7 +137,7 @@ router.post("/verify", async (req, res) => {
       facultyId: magicToken.student.facultyId,
       departmentId: magicToken.student.departmentId,
       role,
-      adminLevel,
+      adminLevels,
     });
   } catch (error) {
     console.error("Verify token error:", error);

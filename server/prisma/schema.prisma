@@ -18,7 +18,7 @@ model Student {
   updatedAt    DateTime @updatedAt
 
   // Relations
-  admin         Admin?
+  admins         Admin[]
   superAdmin    SuperAdmin?
   candidatures  Candidate[]
   ballots       Ballot[]
@@ -30,7 +30,7 @@ model Student {
 
 model Admin {
   id           String   @id @default(cuid())
-  studentId    String   @unique
+  studentId    String
   level        AdminLevel
   facultyId    String?
   departmentId String?

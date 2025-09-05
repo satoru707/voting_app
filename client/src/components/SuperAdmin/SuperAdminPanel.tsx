@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { Shield, Users, Plus, Trash2 } from "lucide-react";
 import { Admin, CreateAdminRequest } from "../../types";
+import { toast } from "sonner";
 
 export const SuperAdminPanel: React.FC = () => {
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [matricNo, setMatricNo] = useState("");
+  var level = "";
   const BACKEND_URL =
     import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
 
@@ -24,12 +26,11 @@ export const SuperAdminPanel: React.FC = () => {
       }
     } catch (error) {
       console.error("Failed to fetch admins:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleCreateAdmin = async (data: CreateAdminRequest) => {
+  const handleCreateAdmin = async (matricNo: string) => {
+    setMatricNo("");
     try {
       const response = await fetch(`${BACKEND_URL}/api/super/admins`, {
         method: "POST",
@@ -37,13 +38,18 @@ export const SuperAdminPanel: React.FC = () => {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify(data),
+        body: JSON.stringify({ matricNo, level }),
       });
+      const data = await response.json();
+      console.log("Create admin response:", data);
 
       if (response.ok) {
         await fetchAdmins();
-        setShowCreateForm(false);
+        toast.success(data.message || "Admin created successfully");
+      } else {
+        toast.error(data.message || "Failed to create admin");
       }
+      setShowCreateForm(false);
     } catch (error) {
       console.error("Failed to create admin:", error);
     }
@@ -195,19 +201,22 @@ export const SuperAdminPanel: React.FC = () => {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                // Handle form submission
+                handleCreateAdmin(matricNo);
                 setShowCreateForm(false);
               }}
               className="space-y-4"
             >
               <input
                 type="text"
-                placeholder="Student ID"
+                value={matricNo}
+                onChange={(e) => setMatricNo(e.target.value)}
+                placeholder="Student Matric No"
                 required
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               <select
                 required
+                onChange={(e) => (level = e.target.value)}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Select Level</option>

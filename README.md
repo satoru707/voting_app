@@ -44,6 +44,8 @@ cd server
 cp .env.example .env
 # Edit .env with your database and email configuration
 npm run prisma:migrate
+# this command populates your db with the data in the seeds folder in the prisma dir,
+# so you can use that for loggin in or fix your emails as replacement before running the command
 npx prisma db seed
 npm run dev
 ```

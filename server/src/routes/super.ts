@@ -1,5 +1,5 @@
 import express, { Router } from "express";
-import { prisma } from "../app";
+import { logger, prisma } from "../app";
 import { requireRole } from "../middleware/auth";
 
 const router: Router = express.Router();
@@ -27,11 +27,12 @@ router.get("/admins", async (req, res) => {
 // Create new admin
 router.post("/admins", async (req, res) => {
   try {
-    const { studentId, level, facultyId, departmentId } = req.body;
+    const { matricNo, level } = req.body;
+    logger.info(matricNo, level);
 
     // Check if student exists
     const student = await prisma.student.findUnique({
-      where: { id: studentId },
+      where: { matricNo: matricNo },
     });
 
     if (!student) {
@@ -39,8 +40,8 @@ router.post("/admins", async (req, res) => {
     }
 
     // Check if already an admin
-    const existingAdmin = await prisma.admin.findUnique({
-      where: { studentId },
+    const existingAdmin = await prisma.admin.findFirst({
+      where: { studentId: student.id, level: level },
     });
 
     if (existingAdmin) {
@@ -49,10 +50,10 @@ router.post("/admins", async (req, res) => {
 
     const admin = await prisma.admin.create({
       data: {
-        studentId,
+        studentId: student.id,
         level,
-        facultyId: level === "FACULTY" ? facultyId : null,
-        departmentId: level === "DEPARTMENT" ? departmentId : null,
+        facultyId: level === "FACULTY" ? student.facultyId : null,
+        departmentId: level === "DEPARTMENT" ? student.departmentId : null,
       },
       include: {
         student: true,

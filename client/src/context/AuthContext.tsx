@@ -37,8 +37,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await fetch(`${BACKEND_URL}/api/me`, {
         credentials: "include",
       });
-      console.log("response", response);
-
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);

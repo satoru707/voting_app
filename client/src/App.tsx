@@ -18,10 +18,9 @@ const AppContent: React.FC = () => {
     "landing"
   );
   const [selectedTab, setSelectedTab] = useState<"elections" | "admin">(
-    "elections"
+    "admin"
   );
   const [authLoading, setAuthLoading] = useState(false);
-  const [authMessage, setAuthMessage] = useState("");
   const [verifyToken, setVerifyToken] = useState("");
   const BACKEND_URL =
     import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
@@ -38,7 +37,6 @@ const AppContent: React.FC = () => {
 
   const handleRequestMagicLink = async (email: string) => {
     setAuthLoading(true);
-    setAuthMessage("");
 
     try {
       const response = await fetch(`${BACKEND_URL}/api/auth/request-link`, {
@@ -87,17 +85,20 @@ const AppContent: React.FC = () => {
           <>
             <div className="max-w-7xl mx-auto mb-6">
               <div className="flex space-x-4 border-b border-gray-200">
-                <button
-                  onClick={() => setSelectedTab("elections")}
-                  className={`px-4 py-2 text-sm font-medium transition-colors
+                {user.role != "SUPER_ADMIN" && (
+                  <button
+                    onClick={() => setSelectedTab("elections")}
+                    className={`px-4 py-2 text-sm font-medium transition-colors
                     ${
                       selectedTab === "elections"
                         ? "border-b-2 border-blue-600 text-blue-700"
                         : "text-gray-600 hover:text-gray-900"
                     }`}
-                >
-                  Elections
-                </button>
+                  >
+                    Elections
+                  </button>
+                )}
+
                 <button
                   onClick={() => setSelectedTab("admin")}
                   className={`px-4 py-2 text-sm font-medium transition-colors

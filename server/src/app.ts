@@ -22,14 +22,15 @@ export const logger = pino(
     level: process.env.NODE_ENV === "production" ? "info" : "debug",
   },
   pinoPretty({
-    colorize: true,
     translateTime: "SYS:yyyy-mm-dd HH:MM:ss",
     ignore: "pid,hostname",
   })
 );
 
 // Security middleware
-app.use(helmet());
+// app.use(helmet());
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
     origin:
@@ -39,19 +40,20 @@ app.use(
     credentials: true,
   })
 );
-app.use((req: any, res, next) => {
-  req.log = logger.child({
-    requestId: Math.random().toString(36).substr(2, 9),
-  });
-  req.log.info({ method: req.method, path: req.path }, "Request received");
-  next();
-});
+app.use(cookieParser());
+// app.use((req: any, res, next) => {
+//   req.log = logger.child({
+//     requestId: Math.random().toString(36).substr(2, 9),
+//   });
+//   req.log.info({ method: req.method, path: req.path }, "Request received");
+//   next();
+// });
 
 // Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-});
+// const limiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 100, // limit each IP to 100 requests per windowMs
+// });
 
 // const authLimiter = rateLimit({
 //   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -60,11 +62,6 @@ const limiter = rateLimit({
 
 // app.use(limiter);
 // app.use("/api/auth", authLimiter);
-
-// Body parsing
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -78,21 +75,21 @@ app.use("/api/elections", authMiddleware, electionRoutes);
 app.use("/api/admin", authMiddleware, adminRoutes);
 app.use("/api/super", authMiddleware, superAdminRoutes);
 
-// Error handling
-app.use(
-  (
-    err: any,
-    req: express.Request,
-    res: express.Response,
-    next: express.NextFunction
-  ) => {
-    console.error("Server error:", err);
-    res.status(500).json({
-      message: "Internal server error",
-      ...(process.env.NODE_ENV === "development" && { error: err.message }),
-    });
-  }
-);
+// // Error handling
+// app.use(
+//   (
+//     err: any,
+//     req: express.Request,
+//     res: express.Response,
+//     next: express.NextFunction
+//   ) => {
+//     if (err.type === "entity.parse.failed") {
+//       logger.error("Body parsing failed:", err);
+//       return res.status(400).json({ message: "Invalid JSON body" });
+//     }
+//     next();
+//   }
+// );
 
 // 404 handler
 app.use("*", (req, res) => {
