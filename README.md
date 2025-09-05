@@ -44,6 +44,7 @@ cd server
 cp .env.example .env
 # Edit .env with your database and email configuration
 npm run prisma:migrate
+npx prisma db seed
 npm run dev
 ```
 

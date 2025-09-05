@@ -12,9 +12,21 @@ import superAdminRoutes from "./routes/super";
 import { authMiddleware } from "./middleware/auth";
 import { closeElection } from "./routes/admin";
 import { Express } from "express";
+import pino from "pino";
+import pinoPretty from "pino-pretty";
 
 const app: Express = express();
 const prisma = new PrismaClient();
+export const logger = pino(
+  {
+    level: process.env.NODE_ENV === "production" ? "info" : "debug",
+  },
+  pinoPretty({
+    colorize: true,
+    translateTime: "SYS:yyyy-mm-dd HH:MM:ss",
+    ignore: "pid,hostname",
+  })
+);
 
 // Security middleware
 app.use(helmet());
@@ -27,6 +39,13 @@ app.use(
     credentials: true,
   })
 );
+app.use((req: any, res, next) => {
+  req.log = logger.child({
+    requestId: Math.random().toString(36).substr(2, 9),
+  });
+  req.log.info({ method: req.method, path: req.path }, "Request received");
+  next();
+});
 
 // Rate limiting
 const limiter = rateLimit({
@@ -84,11 +103,11 @@ app.use("*", (req, res) => {
 const PORT = process.env.PORT || 3001;
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  logger.info(`Server running on http://localhost:${PORT}`);
 
   // Schedule election auto-closure
   setInterval(async () => {
-    console.log("Checking for elections to auto-close...");
+    logger.info("Checking for elections to auto-close...");
     const electionsToEnd = await prisma.election.findMany({
       where: {
         status: "OPEN",
@@ -97,7 +116,7 @@ app.listen(PORT, () => {
     });
 
     for (const election of electionsToEnd) {
-      console.log(`Auto-closing election: ${election.title}`);
+      logger.info(`Auto-closing election: ${election.title}`);
       await closeElection(election.id);
     }
   }, 60 * 1000); // Check every minute

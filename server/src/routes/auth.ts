@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { prisma } from "../app";
 import { sendMagicLink } from "../utils/email";
+import { logger } from "../app";
 import { log } from "console";
 
 const router: Router = express.Router();
@@ -11,7 +12,7 @@ const router: Router = express.Router();
 router.post("/request-link", async (req, res) => {
   try {
     const { email } = req.body;
-    console.log("WFWF", req.body);
+    logger.info("WFWF", req.body);
 
     if (!email) {
       return res
@@ -42,7 +43,7 @@ router.post("/request-link", async (req, res) => {
 
     // Send magic link email
     const magicLink = `${process.env.FRONTEND_URL}?token=${nonce}`;
-    console.log(magicLink, student.email);
+    logger.info(magicLink, (student as any).email);
     await sendMagicLink(student.email, magicLink);
 
     res.json({ message: "Magic link sent to your email" });
@@ -52,10 +53,22 @@ router.post("/request-link", async (req, res) => {
   }
 });
 
+router.post("/logout", async (req, res) => {
+  logger.info("Logging out...");
+  // Clear cookies on the server side
+  res.clearCookie("session", { path: "/" });
+
+  // Invalidate session (if using a session store)
+  // e.g., req.session.destroy((err) => { ... });
+
+  res.status(200).json({ message: "Logged out successfully" });
+});
+
 // Verify magic link token
 router.post("/verify", async (req, res) => {
   try {
     const { token } = req.body;
+    logger.info("Token", token);
 
     if (!token) {
       return res.status(400).json({ message: "Token is required" });
@@ -88,7 +101,7 @@ router.post("/verify", async (req, res) => {
     const sessionToken = jwt.sign(
       { studentId: magicToken.student.id },
       process.env.JWT_SECRET || "fallback-secret",
-      { expiresIn: "7d" }
+      { expiresIn: "15mins" }
     );
 
     // Set HTTP-only cookie
@@ -96,7 +109,7 @@ router.post("/verify", async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 15 * 60 * 1000, // 7 days
     });
 
     // Determine user role

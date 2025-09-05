@@ -7,50 +7,36 @@ import {
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log("Seeding database...");
-
-  // Create sample students
+async function seed() {
   const students = await Promise.all([
     prisma.student.upsert({
-      where: { email: "john.doe@university.edu" },
+      where: { email: "praisethegreat2007@gmail.com" },
       update: {},
       create: {
         matricNo: "ST2021001",
-        email: "pe",
+        email: "praisethegreat2007@gmail.com",
         year: 300,
         facultyId: "ENGINEERING",
         departmentId: "COMPUTER_SCIENCE",
       },
     }),
     prisma.student.upsert({
-      where: { email: "jane.smith@university.edu" },
+      where: { email: "petolulope7@gmail.com" },
       update: {},
       create: {
         matricNo: "ST2021002",
-        email: "jane.smith@university.edu",
+        email: "petolulope7@gmail.com",
         year: 400,
         facultyId: "ENGINEERING",
         departmentId: "ELECTRICAL",
       },
     }),
     prisma.student.upsert({
-      where: { email: "admin@university.edu" },
-      update: {},
-      create: {
-        matricNo: "AD2020001",
-        email: "admin@university.edu",
-        year: 500,
-        facultyId: "ENGINEERING",
-        departmentId: "COMPUTER_SCIENCE",
-      },
-    }),
-    prisma.student.upsert({
-      where: { email: "super@university.edu" },
+      where: { email: "tolulopeolaoye067@gmail.com" },
       update: {},
       create: {
         matricNo: "SA2020001",
-        email: "super@university.edu",
+        email: "tolulope067@gmail.com",
         year: 500,
         facultyId: "ADMINISTRATION",
         departmentId: "IT",
@@ -60,10 +46,10 @@ async function main() {
 
   // Create admin
   await prisma.admin.upsert({
-    where: { studentId: students[2].id },
+    where: { studentId: students[1].id },
     update: {},
     create: {
-      studentId: students[2].id,
+      studentId: students[1].id,
       level: AdminLevel.FACULTY,
       facultyId: "ENGINEERING",
     },
@@ -71,10 +57,10 @@ async function main() {
 
   // Create super admin
   await prisma.superAdmin.upsert({
-    where: { studentId: students[3].id },
+    where: { studentId: students[2].id },
     update: {},
     create: {
-      studentId: students[3].id,
+      studentId: students[2].id,
     },
   });
 
@@ -123,12 +109,12 @@ async function main() {
 
   console.log("Database seeded successfully!");
   console.log("Test accounts:");
-  console.log("Student: john.doe@university.edu");
-  console.log("Admin: admin@university.edu");
-  console.log("Super Admin: super@university.edu");
+  console.log("Student: praisethegreat2007@gmail.com");
+  console.log("Admin: petolulope7@gmail.com");
+  console.log("Super Admin: tolulope067@gmail.com");
 }
 
-main();
+seed();
 // .then(async () => {
 //   await prisma.$disconnect();
 // })

@@ -37,6 +37,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await fetch(`${BACKEND_URL}/api/me`, {
         credentials: "include",
       });
+      console.log("response", response);
+
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
@@ -71,10 +73,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    // Clear session cookie
+  const logout = async () => {
+    console.log("Logging out...");
+    await fetch(`${BACKEND_URL}/api/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
     document.cookie = "session=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
+    document.cookie = "dfe=;";
+
+    sessionStorage.clear();
+    localStorage.clear();
+    setUser(null);
+
     toast.success("Logged out successfully.");
   };
 
